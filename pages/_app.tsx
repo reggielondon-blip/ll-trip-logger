@@ -29,6 +29,9 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#000000" />
       </Head>
+      <style jsx global>{`
+        :root { --font-body: ${outfit.style.fontFamily}; --font-display: ${playfair.style.fontFamily}; }
+      `}</style>
       <Component {...pageProps} />
     </div>
   );
