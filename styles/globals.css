@@ -227,3 +227,39 @@ body.mnav-open .hdr-wrap { display: none; }
 .login-wrap { max-width: 480px; margin: 8px auto 0; }
 .login-foot { text-align: center; font-size: 0.86rem; color: var(--ink-mid); margin-top: 16px; }
 .login-foot a { color: var(--magenta); font-weight: 600; }
+
+/* ---------- SEO content below the tool ---------- */
+.seo { max-width: 860px; margin: 48px auto 0; }
+.crumbs ol { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin: 0 0 8px; font-size: 0.8rem; color: var(--ink-mid); }
+.crumbs li + li::before { content: "›"; margin-right: 6px; color: var(--peach-deep); }
+.crumbs a { color: var(--ink-mid); text-decoration: none; }
+.crumbs a:hover { color: var(--magenta); }
+.seo-section { margin-top: 40px; }
+.seo-section h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); margin-bottom: 10px; text-wrap: balance; }
+.seo-lede { max-width: 66ch; color: var(--ink-soft); }
+.seo-lede a { color: var(--magenta); font-weight: 600; }
+.seo-note { font-size: 0.86rem; color: var(--ink-mid); max-width: 70ch; margin-top: 12px; }
+.seo-note a { color: var(--magenta); }
+.steps { counter-reset: step; list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 14px; }
+.steps li { counter-increment: step; position: relative; padding: 16px 18px 16px 64px; background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; }
+.steps li::before { content: counter(step); position: absolute; left: 16px; top: 14px; width: 34px; height: 34px; border-radius: 50%; background: var(--magenta); color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; font-family: var(--font-serif); }
+.steps strong { display: block; font-size: 1.02rem; }
+.steps p { margin: 4px 0 0; color: var(--ink-soft); font-size: 0.95rem; }
+.fields { display: grid; gap: 12px; margin: 18px 0 0; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.fields > div { background: var(--bg-tint); border: 1px solid var(--border-peach); border-radius: 12px; padding: 14px 16px; }
+.fields dt { font-weight: 700; margin-bottom: 4px; }
+.fields dd { margin: 0; font-size: 0.92rem; color: var(--ink-soft); }
+.faq details { border-bottom: 1px solid var(--ink-line); padding: 8px 0; }
+.faq summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; font-weight: 700; color: var(--magenta); font-size: 1.3rem; flex-shrink: 0; }
+.faq details[open] summary::after { content: "–"; }
+.faq h3 { font-family: var(--font-sans); font-size: 1rem; font-weight: 700; margin: 8px 0; }
+.faq p { margin: 0 0 12px; color: var(--ink-soft); max-width: 70ch; }
+.related { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 8px; }
+.related a { color: var(--ink-deep); text-decoration: underline; text-decoration-color: var(--cyan); text-underline-offset: 3px; }
+.related a:hover { text-decoration-color: var(--magenta); }
+.reviewers { display: flex; flex-wrap: wrap; gap: 18px 36px; }
+.reviewer { display: flex; flex-direction: column; }
+.reviewer a { color: var(--ink-deep); text-decoration: none; }
+.reviewer span { font-size: 0.82rem; color: var(--ink-mid); }

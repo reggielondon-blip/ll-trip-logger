@@ -1,0 +1,20 @@
+# L and L Trip Logger
+
+> Free occupational driver's license (ODL) trip log for Texas drivers, provided by L and L Law Group, PLLC (Frisco, TX). No account. Data stays on the user's device. Exports a court-ready PDF.
+
+## What it does
+- Records date, departure/arrival time, origin, destination, purpose, and start/end odometer for each trip
+- Calculates miles per trip and total miles
+- Exports a letter-size PDF with a signature line
+
+## Legal context
+- Texas Transportation Code §521.248 sets the hours, days, purposes and areas an occupational license order may allow; courts commonly require a written trip log.
+
+## Firm
+- L and L Law Group, PLLC · 5899 Preston Rd, Suite 101, Frisco, TX 75034 · (972) 370-5060 · info@landllawgroup.com
+- Co-Founding Partners: Reggie London (Bar 24043514), Njeri London (Bar 24043266)
+- Serves Collin, Dallas, Denton and Tarrant counties
+
+## Related
+- https://landllawgroup.com/criminal-defense/occupational-driving-license/
+- https://landllawgroup.com/occupational-license/

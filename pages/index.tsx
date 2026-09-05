@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import type { AuthCredentials, Trip, TripFormData } from "@/lib/types";
 import { buildTripLogPdf } from "@/lib/pdf";
+import Head from "next/head";
+import SeoContent from "@/components/SeoContent";
+import { jsonLd } from "@/lib/seo";
 
 // Free, no-sign-in version. Everything lives in this browser's localStorage.
 // One log per device; the optional name / case number only appear on the PDF.
@@ -72,9 +75,11 @@ export default function Home() {
     setProfile(p);
     try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch { /* ignore */ }
   };
-  if (!ready) return null;
   return (
     <>
+      <Head>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd()) }} />
+      </Head>
       <SiteHeader onMenu={() => setMenu(true)} />
       <MobileNav open={menu} onClose={() => setMenu(false)} />
       <div className="announce">
@@ -86,9 +91,10 @@ export default function Home() {
           <h1>
             Your occupational driving <em>log.</em>
           </h1>
-          <p>Record every trip your court order requires: date, times, where you went, why, and the odometer readings. Export a PDF for your attorney or the court whenever you need it. Nothing to sign up for.</p>
+          <p id="lede">Free occupational driver&apos;s license trip log for Texas. Record every trip your court order requires: date, times, where you went, why, and the odometer readings. Miles are calculated for you, everything stays on your phone, and you can export a court-ready PDF whenever you need it. Nothing to sign up for.</p>
         </section>
-        <Logger profile={profile} onProfile={saveProfile} />
+        {ready ? <Logger profile={profile} onProfile={saveProfile} /> : <section className="card" id="log-trip"><p className="hint">Loading your log…</p></section>}
+        <SeoContent />
       </main>
       <SiteFooter />
       <MobileBar />
