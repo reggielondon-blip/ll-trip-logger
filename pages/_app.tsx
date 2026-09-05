@@ -12,7 +12,7 @@ export default function App({ Component, pageProps }: AppProps) {
     <div className={`${playfair.variable} ${outfit.variable} min-h-screen flex flex-col bg-[var(--snow)] text-[var(--ink)]`}>
       <Head>
         <title>Free Texas Occupational License Trip Log | L and L Law Group</title>
-        <meta name="description" content="Free occupational driver's license trip log for Texas. Record date, time, route, reason and odometer miles on your phone, then export a court-ready PDF. No account needed." />
+        <meta name="description" content="Free Texas occupational driver's license trip log. Record date, time, route, reason and odometer miles on your phone, then export a court-ready PDF." />
         <link rel="canonical" href="https://ll-trip-logger-local.netlify.app/" />
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

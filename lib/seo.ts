@@ -6,7 +6,7 @@ export const SITE = {
   name: "Trip Logger",
   title: "Free Texas Occupational License Trip Log | L and L Law Group",
   description:
-    "Free occupational driver's license trip log for Texas. Record date, time, route, reason and odometer miles on your phone, then export a court-ready PDF. No account needed.",
+    "Free Texas occupational driver's license trip log. Record date, time, route, reason and odometer miles on your phone, then export a court-ready PDF.",
   ogImage: "https://ll-trip-logger-local.netlify.app/og.png",
   published: "2026-09-04",
   modified: "2026-09-05",
