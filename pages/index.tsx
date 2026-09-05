@@ -3,14 +3,17 @@ import { api } from "@/lib/api";
 import type { AuthCredentials, Trip, TripFormData } from "@/lib/types";
 import { buildTripLogPdf } from "@/lib/pdf";
 
-// All data lives in this browser's localStorage. No backend, no database.
-const SESSION_KEY = "ll-trip-logger.session";
+// Free, no-sign-in version. Everything lives in this browser's localStorage.
+// One log per device; the optional name / case number only appear on the PDF.
+const PROFILE_KEY = "ll-trip-logger.profile";
+const LOG_ID = "MY-LOG";
+const CREDS: AuthCredentials = { case_id: LOG_ID, client_email: "", client_pin: "0000" };
+
 const FIRM = {
-  name: "L and L Law Group, PLLC",
-  tag: "Criminal Defense · Frisco, Texas",
   phone: "(972) 370-5060",
   tel: "tel:+19723705060",
-  addr: "5899 Preston Rd, Suite 101, Frisco, TX 75034",
+  email: "info@landllawgroup.com",
+  map: "https://g.page/landllawgroup",
   site: "https://landllawgroup.com",
   odl: "https://landllawgroup.com/criminal-defense/occupational-driving-license/",
 };
@@ -27,12 +30,14 @@ const REASONS = [
   "Other (essential need)",
 ] as const;
 
-function loadSession(): AuthCredentials | null {
+interface Profile { name: string; case_id: string; email: string }
+const emptyProfile = (): Profile => ({ name: "", case_id: "", email: "" });
+function loadProfile(): Profile {
   try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as AuthCredentials) : null;
+    const raw = localStorage.getItem(PROFILE_KEY);
+    return raw ? { ...emptyProfile(), ...(JSON.parse(raw) as Partial<Profile>) } : emptyProfile();
   } catch {
-    return null;
+    return emptyProfile();
   }
 }
 function today(): string {
@@ -52,162 +57,196 @@ function fmtTime(t: string) {
 }
 
 export default function Home() {
-  const [session, setSession] = useState<AuthCredentials | null>(null);
   const [ready, setReady] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const [profile, setProfile] = useState<Profile>(emptyProfile);
   useEffect(() => {
-    setSession(loadSession());
+    setProfile(loadProfile());
     setReady(true);
   }, []);
-  const signOut = () => {
-    localStorage.removeItem(SESSION_KEY);
-    setSession(null);
+  useEffect(() => {
+    document.body.classList.toggle("mnav-open", menu);
+    return () => document.body.classList.remove("mnav-open");
+  }, [menu]);
+  const saveProfile = (p: Profile) => {
+    setProfile(p);
+    try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch { /* ignore */ }
   };
   if (!ready) return null;
   return (
-    <div className="flex-1 flex flex-col">
-      <Header session={session} onSignOut={signOut} />
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-6 sm:py-10">
-        {session ? (
-          <Logger session={session} />
-        ) : (
-          <Login
-            onLogin={(s) => {
-              localStorage.setItem(SESSION_KEY, JSON.stringify(s));
-              setSession(s);
-            }}
-          />
-        )}
+    <>
+      <SiteHeader onMenu={() => setMenu(true)} />
+      <MobileNav open={menu} onClose={() => setMenu(false)} />
+      <div className="announce">
+        Free occupational driver&apos;s license <strong>trip log</strong> — no account needed — <em>saved on this device</em>
+      </div>
+      <main id="main" className="wrap">
+        <section className="hero">
+          <div className="eyebrow">Free tool · L and L Law Group</div>
+          <h1>
+            Your occupational driving <em>log.</em>
+          </h1>
+          <p>Record every trip your court order requires: date, times, where you went, why, and the odometer readings. Export a PDF for your attorney or the court whenever you need it. Nothing to sign up for.</p>
+        </section>
+        <Logger profile={profile} onProfile={saveProfile} />
       </main>
-      <Footer />
+      <SiteFooter />
+      <MobileBar />
+    </>
+  );
+}
+
+/* ---------------- flagship chrome ---------------- */
+
+function SiteHeader({ onMenu }: { onMenu: () => void }) {
+  return (
+    <div className="hdr-wrap">
+      <div className="top">
+        <a href={FIRM.tel}><em>Call</em> {FIRM.phone}</a>
+        <a href={`${FIRM.site}/contact-us/`}><em>Free</em> Consult</a>
+      </div>
+      <header className="hdr">
+        <a href={FIRM.site}>
+          <div className="hdr-logo">L and L <span>Law Group</span>, PLLC</div>
+          <div className="hdr-sub">Criminal Defense · Frisco, Texas</div>
+        </a>
+        <nav className="hdr-nav" aria-label="Primary">
+          <a href={`${FIRM.site}/criminal-defense/`}>Practice Areas</a>
+          <a href={FIRM.odl}>Occupational License</a>
+          <a href={`${FIRM.site}/calculators/`}>Calculators</a>
+          <a href={`${FIRM.site}/team-card/`}>Attorneys</a>
+          <a href={`${FIRM.site}/contact-us/`}>Contact</a>
+        </nav>
+        <div className="hdr-right">
+          <button className="hdr-ham" type="button" aria-label="Open menu" onClick={onMenu}>
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+      </header>
     </div>
   );
 }
 
-function Header({ session, onSignOut }: { session: AuthCredentials | null; onSignOut: () => void }) {
+function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
-    <header className="bg-[var(--black)] text-[var(--snow)] border-b-4 border-[var(--peach)]">
-      <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
-        <a href={FIRM.site} className="block no-underline text-[var(--snow)]">
-          <div className="display text-xl sm:text-2xl font-extrabold leading-none tracking-tight">{FIRM.name}</div>
-          <div className="eyebrow text-[var(--peach)] mt-1">{FIRM.tag}</div>
-        </a>
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:block text-right">
-            <div className="eyebrow text-[var(--cyan)]">Trip Logger</div>
-            <div className="text-sm text-[var(--snow)]/80">Occupational driving log</div>
-          </div>
-          {session ? (
-            <div className="text-right text-sm border-l border-white/20 pl-4">
-              <div className="font-semibold">{session.client_email}</div>
-              <div className="text-[var(--peach)] tnum">Case {session.case_id}</div>
-              <button onClick={onSignOut} className="mt-1 text-xs underline underline-offset-2 text-[var(--snow)]/80 hover:text-[var(--cyan)]">Sign out</button>
-            </div>
-          ) : (
-            <a href={FIRM.tel} className="rounded-md bg-[var(--cyan)] text-[var(--black)] font-semibold px-4 py-2 text-sm hover:bg-[var(--peach)] no-underline whitespace-nowrap">Call {FIRM.phone}</a>
-          )}
-        </div>
+    <div className="mnav" role="dialog" aria-modal="true" aria-label="Mobile navigation" aria-hidden={!open}>
+      <button className="mnav-close" type="button" onClick={onClose} aria-label="Close menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" /></svg>
+      </button>
+      <nav className="mnav-nav" aria-label="Site navigation">
+        <a href="/" onClick={onClose}>Trip Logger</a>
+        <a href={FIRM.site}>Home</a>
+        <a href={`${FIRM.site}/criminal-defense/`}>Practice Areas</a>
+        <a href={FIRM.odl}>Occupational License</a>
+        <a href={`${FIRM.site}/calculators/`}>Calculators</a>
+        <a href={`${FIRM.site}/team-card/`}>Attorneys</a>
+        <a href={`${FIRM.site}/contact-us/`}>Contact</a>
+      </nav>
+      <div className="mnav-actions">
+        <a href={FIRM.tel} className="mnav-call" aria-label={`Call ${FIRM.phone}`}><span className="mnav-call-icon"><PhoneIcon /></span><span>{FIRM.phone}</span></a>
+        <a href={`mailto:${FIRM.email}`} className="mnav-call mnav-call-email" aria-label={`Email ${FIRM.email}`}><span className="mnav-call-icon"><MailIcon /></span><span>{FIRM.email}</span></a>
       </div>
-    </header>
+    </div>
   );
 }
 
-function Footer() {
+function SiteFooter() {
   return (
-    <footer className="ll-shimmer bg-[var(--ink-deep)] text-[var(--snow)] mt-10">
-      <div className="max-w-6xl mx-auto px-4 py-10 grid gap-8 sm:grid-cols-3">
+    <footer className="footer" role="contentinfo">
+      <div className="footer-in">
         <div>
-          <div className="eyebrow text-[var(--peach)] mb-3">L and L Law Group</div>
-          <div className="display text-lg font-bold">{FIRM.name}</div>
-          <div className="text-sm text-[var(--snow)]/80 mt-1">{FIRM.addr}</div>
-          <a href={FIRM.tel} className="block mt-2 text-sm font-semibold text-[var(--snow)] hover:text-[var(--peach)]">{FIRM.phone}</a>
+          <div className="footer-brand">L and L <span>Law Group</span>, PLLC</div>
+          <p className="footer-desc">Dedicated criminal defense for Frisco and the wider Dallas–Fort Worth metroplex. Licensed in Texas; admitted in TXND and TXED federal courts. Husband-and-wife founded; client-first by design.</p>
         </div>
-        <div>
-          <div className="eyebrow text-[var(--peach)] mb-3">Occupational license</div>
-          <ul className="space-y-2 text-sm">
-            <li><a className="hover:text-[var(--peach)]" href={FIRM.odl}>What an occupational driver&apos;s license allows</a></li>
-            <li><a className="hover:text-[var(--peach)]" href={`${FIRM.site}/occupational-license/`}>Check your eligibility</a></li>
-            <li><a className="hover:text-[var(--peach)]" href={`${FIRM.site}/texas-probation-deferred-adjudication/odl/`}>Texas ODL guide</a></li>
-          </ul>
+        <div className="footer-col">
+          <h4>Occupational License</h4>
+          <a href={FIRM.odl}>What an ODL allows</a>
+          <a href={`${FIRM.site}/occupational-license/`}>Eligibility checker</a>
+          <a href={`${FIRM.site}/texas-probation-deferred-adjudication/odl/`}>Texas ODL guide</a>
+          <a href={`${FIRM.site}/criminal-defense/dwi-cases/`}>DWI Defense</a>
         </div>
-        <div>
-          <div className="eyebrow text-[var(--peach)] mb-3">About this log</div>
-          <p className="text-sm text-[var(--snow)]/80">Your entries are saved on this device only, in this browser. Export the PDF regularly and keep it with the vehicle as your court order requires. Nothing here is legal advice.</p>
+        <div className="footer-col">
+          <h4>More</h4>
+          <a href={`${FIRM.site}/criminal-defense/`}>Practice Areas</a>
+          <a href={`${FIRM.site}/calculators/`}>Calculators</a>
+          <a href={`${FIRM.site}/blog/`}>Blog</a>
+          <a href={`${FIRM.site}/faq/`}>FAQ</a>
+          <a href={`${FIRM.site}/about/`}>About</a>
+        </div>
+        <div className="footer-col">
+          <h4>Contact</h4>
+          <address>
+            <a href={FIRM.tel}>{FIRM.phone}</a>
+            <a href={`mailto:${FIRM.email}`}>{FIRM.email}</a>
+            <a href={FIRM.map} target="_blank" rel="noopener">5899 Preston Rd, Suite 101<br />Frisco, TX 75034</a>
+          </address>
         </div>
       </div>
-      <div className="border-t border-white/10">
-        <div className="max-w-6xl mx-auto px-4 py-4 text-xs text-[var(--snow)]/60 flex flex-wrap justify-between gap-2">
-          <span>© {new Date().getFullYear()} {FIRM.name}. Attorney advertising.</span>
-          <a className="hover:text-[var(--peach)]" href={FIRM.site}>landllawgroup.com</a>
-        </div>
+      <div className="footer-legal-links">
+        <a href={`${FIRM.site}/privacy-policy/`}>Privacy Policy</a>
+        <a href={`${FIRM.site}/terms-of-service/`}>Terms of Service</a>
+        <a href={`${FIRM.site}/disclaimer/`}>Disclaimer</a>
+        <a href={`${FIRM.site}/accessibility-statement/`}>Accessibility</a>
+      </div>
+      <div className="footer-bottom">
+        © {new Date().getFullYear()} L and L Law Group, PLLC. All rights reserved. This tool records the entries you make on your own device; it does not constitute legal advice or create an attorney–client relationship.
       </div>
     </footer>
   );
 }
 
-const inputCls = "w-full rounded-md border border-[var(--ink-line)] bg-white px-3 py-2 text-base text-[var(--ink)] placeholder:text-[var(--ink-mid)]";
-const primaryBtn = "w-full rounded-md bg-[var(--cyan)] text-[var(--black)] font-bold py-2.5 hover:bg-[var(--peach)] disabled:opacity-60";
-const ghostBtn = "rounded-md border-2 border-[var(--black)] text-[var(--black)] font-semibold px-4 py-2 hover:bg-[var(--bg-tint)] disabled:opacity-60";
+function MobileBar() {
+  return (
+    <nav className="mob-bar" aria-label="Mobile contact bar">
+      <div className="mob-bar-in">
+        <a href={FIRM.tel} className="mb-call" aria-label="Call"><span className="mb-ic"><PhoneIcon /></span><span>Call</span></a>
+        <a href={`mailto:${FIRM.email}`} className="mb-email" aria-label="Email"><span className="mb-ic"><MailIcon /></span><span>Email</span></a>
+        <a href="#log-trip" className="mb-log" aria-label="Log a trip">
+          <span className="mb-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" /></svg></span>
+          <span>Log</span>
+        </a>
+        <a href={FIRM.map} target="_blank" rel="noopener" className="mb-map" aria-label="Map">
+          <span className="mb-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg></span>
+          <span>Map</span>
+        </a>
+        <button type="button" className="mb-top" aria-label="Back to top" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+          <span className="mb-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg></span>
+          <span>Top</span>
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+    </svg>
+  );
+}
+function MailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
+  );
+}
+
+/* ---------------- app ---------------- */
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
   return (
-    <label htmlFor={htmlFor} className="block">
-      <span className="block text-sm font-semibold text-[var(--ink-soft)] mb-1">{label}</span>
+    <label htmlFor={htmlFor} className="field">
+      <span>{label}</span>
       {children}
     </label>
   );
 }
 
-function Login({ onLogin }: { onLogin: (s: AuthCredentials) => void }) {
-  const [caseId, setCaseId] = useState("");
-  const [email, setEmail] = useState("");
-  const [pin, setPin] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErr(null);
-    setBusy(true);
-    try {
-      const creds: AuthCredentials = { case_id: caseId.trim().toUpperCase(), client_email: email.trim().toLowerCase(), client_pin: pin };
-      const res = await api.verifyAuth(creds);
-      if (!res.authenticated) throw new Error("Sign-in failed");
-      onLogin(creds);
-    } catch (ex) {
-      setErr(ex instanceof Error ? ex.message : "Sign-in failed");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="max-w-md mx-auto">
-      <div className="bg-[var(--card)] rounded-lg border border-[var(--ink-line)] shadow-sm p-6 sm:p-8">
-        <div className="eyebrow text-[var(--cyan-deep)] mb-2">Client sign-in</div>
-        <h1 className="text-2xl sm:text-3xl text-[var(--black)]">Your occupational driving log</h1>
-        <p className="mt-2 text-sm text-[var(--ink-soft)]">Enter your email, case number and a 4-digit PIN. Your log is stored on this device.</p>
-        <form onSubmit={submit} className="mt-6 space-y-4">
-          <Field label="Email" htmlFor="email">
-            <input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
-          </Field>
-          <Field label="Case number" htmlFor="case">
-            <input id="case" required value={caseId} onChange={(e) => setCaseId(e.target.value)} className={inputCls} placeholder="e.g. LL-2026-0412" />
-          </Field>
-          <Field label="4-digit PIN" htmlFor="pin">
-            <input id="pin" inputMode="numeric" pattern="\d{4}" maxLength={4} required value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} className={`${inputCls} tracking-[0.5em]`} />
-          </Field>
-          {err && <p role="alert" className="text-sm text-[var(--bad)]">{err}</p>}
-          <button disabled={busy} className={primaryBtn}>{busy ? "Checking…" : "Sign in"}</button>
-        </form>
-      </div>
-      <p className="mt-4 text-sm text-center text-[var(--ink-mid)]">Questions? Call the office at <a className="underline decoration-[var(--cyan)] hover:decoration-[var(--magenta)] text-[var(--black)]" href={FIRM.tel}>{FIRM.phone}</a>.</p>
-    </div>
-  );
-}
-
 const emptyTrip = (): TripFormData => ({ trip_date: today(), time_start: "", time_end: "", location_from: "", location_to: "", reason: REASONS[0], odometer_start: "", odometer_end: "" });
 
-function Logger({ session }: { session: AuthCredentials }) {
+function Logger({ profile, onProfile }: { profile: Profile; onProfile: (p: Profile) => void }) {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -221,7 +260,7 @@ function Logger({ session }: { session: AuthCredentials }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await api.getTrips(session);
+      const list = await api.getTrips(CREDS);
       setTrips([...list].sort((a, b) => (b.trip_date + b.time_start).localeCompare(a.trip_date + a.time_start) || b.id - a.id));
       setErr(null);
     } catch (e) {
@@ -229,7 +268,7 @@ function Logger({ session }: { session: AuthCredentials }) {
     } finally {
       setLoading(false);
     }
-  }, [session]);
+  }, []);
 
   useEffect(() => {
     refresh();
@@ -250,7 +289,7 @@ function Logger({ session }: { session: AuthCredentials }) {
     setErr(null);
     setNotice(null);
     try {
-      await api.createTrip(form, session);
+      await api.createTrip(form, CREDS);
       await refresh();
       setForm((f) => ({ ...emptyTrip(), trip_date: f.trip_date, odometer_start: f.odometer_end, reason: f.reason }));
       setNotice("Trip saved.");
@@ -264,7 +303,7 @@ function Logger({ session }: { session: AuthCredentials }) {
   const remove = async (t: Trip) => {
     if (!confirm(`Delete the ${fmtDate(t.trip_date)} trip from ${t.location_from} to ${t.location_to}?`)) return;
     try {
-      await api.deleteTrip(t.id, session);
+      await api.deleteTrip(t.id, CREDS);
       setTrips((list) => list.filter((x) => x.id !== t.id));
     } catch (ex) {
       fail(ex);
@@ -275,7 +314,12 @@ function Logger({ session }: { session: AuthCredentials }) {
     setExporting(true);
     setErr(null);
     try {
-      await buildTripLogPdf(await api.exportTrips(session));
+      const data = await api.exportTrips(CREDS);
+      await buildTripLogPdf({
+        ...data,
+        case_id: profile.case_id.trim() || "Trip log",
+        client_email: [profile.name.trim(), profile.email.trim()].filter(Boolean).join("  ·  ") || "Occupational driver's license",
+      });
     } catch (ex) {
       fail(ex);
     } finally {
@@ -284,86 +328,94 @@ function Logger({ session }: { session: AuthCredentials }) {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_1fr]">
-      <section className="bg-[var(--card)] rounded-lg border border-[var(--ink-line)] shadow-sm p-5 sm:p-6 h-fit">
-        <div className="eyebrow text-[var(--cyan-deep)] mb-1">New entry</div>
-        <h2 className="text-xl text-[var(--black)]">Log a trip</h2>
-        <form onSubmit={save} className="mt-4 space-y-4">
-          <Field label="Date" htmlFor="date">
-            <input id="date" type="date" required value={form.trip_date} max={today()} onChange={(e) => set("trip_date", e.target.value)} className={inputCls} />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Left at" htmlFor="ts"><input id="ts" type="time" required value={form.time_start} onChange={(e) => set("time_start", e.target.value)} className={inputCls} /></Field>
-            <Field label="Arrived at" htmlFor="te"><input id="te" type="time" required value={form.time_end} onChange={(e) => set("time_end", e.target.value)} className={inputCls} /></Field>
-          </div>
-          <Field label="From" htmlFor="from"><input id="from" required maxLength={255} value={form.location_from} onChange={(e) => set("location_from", e.target.value)} className={inputCls} placeholder="Home – 123 Main St, Frisco" /></Field>
-          <Field label="To" htmlFor="to"><input id="to" required maxLength={255} value={form.location_to} onChange={(e) => set("location_to", e.target.value)} className={inputCls} placeholder="Work – 500 Legacy Dr, Plano" /></Field>
-          <Field label="Reason" htmlFor="reason">
-            <select id="reason" value={form.reason} onChange={(e) => set("reason", e.target.value)} className={inputCls}>
-              {REASONS.map((r) => <option key={r}>{r}</option>)}
-            </select>
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Odometer start" htmlFor="os"><input id="os" type="number" step="0.1" min="0" inputMode="decimal" required value={form.odometer_start} onChange={(e) => set("odometer_start", e.target.value)} className={inputCls} /></Field>
-            <Field label="Odometer end" htmlFor="oe"><input id="oe" type="number" step="0.1" min="0" inputMode="decimal" required value={form.odometer_end} onChange={(e) => set("odometer_end", e.target.value)} className={inputCls} /></Field>
-          </div>
-          <div className="rounded-md bg-[var(--bg-tint)] border border-[var(--border-peach)] px-3 py-2 text-sm flex items-center justify-between">
-            <span className="text-[var(--ink-soft)]">Miles this trip</span>
-            <span className="tnum font-bold text-[var(--black)] text-lg">{autoMiles ?? "—"}</span>
-          </div>
-          {form.odometer_start !== "" && form.odometer_end !== "" && autoMiles === null && (
-            <p className="text-sm text-[var(--bad)]">Ending odometer must be greater than the start.</p>
-          )}
-          {notice && <p className="text-sm text-[var(--ok)]">{notice}</p>}
-          <button disabled={saving} className={primaryBtn}>{saving ? "Saving…" : "Save trip"}</button>
-        </form>
-      </section>
+    <div className="two-col">
+      <div style={{ display: "grid", gap: 24 }}>
+        <section className="card" id="log-trip">
+          <div className="eyebrow eyebrow-magenta">New entry</div>
+          <h2>Log a trip</h2>
+          <p className="card-sub">Miles are calculated from your odometer readings.</p>
+          <form onSubmit={save}>
+            <Field label="Date" htmlFor="date">
+              <input id="date" type="date" required value={form.trip_date} max={today()} onChange={(e) => set("trip_date", e.target.value)} className="input" />
+            </Field>
+            <div className="grid-2">
+              <Field label="Left at" htmlFor="ts"><input id="ts" type="time" value={form.time_start} onChange={(e) => set("time_start", e.target.value)} className="input" /></Field>
+              <Field label="Arrived at" htmlFor="te"><input id="te" type="time" value={form.time_end} onChange={(e) => set("time_end", e.target.value)} className="input" /></Field>
+            </div>
+            <Field label="From" htmlFor="from"><input id="from" required maxLength={255} value={form.location_from} onChange={(e) => set("location_from", e.target.value)} className="input" placeholder="Home – 123 Main St, Frisco" /></Field>
+            <Field label="To" htmlFor="to"><input id="to" required maxLength={255} value={form.location_to} onChange={(e) => set("location_to", e.target.value)} className="input" placeholder="Work – 500 Legacy Dr, Plano" /></Field>
+            <Field label="Reason" htmlFor="reason">
+              <select id="reason" value={form.reason} onChange={(e) => set("reason", e.target.value)} className="input">
+                {REASONS.map((r) => <option key={r}>{r}</option>)}
+              </select>
+            </Field>
+            <div className="grid-2">
+              <Field label="Odometer start" htmlFor="os"><input id="os" type="number" step="0.1" min="0" inputMode="decimal" required value={form.odometer_start} onChange={(e) => set("odometer_start", e.target.value)} className="input" /></Field>
+              <Field label="Odometer end" htmlFor="oe"><input id="oe" type="number" step="0.1" min="0" inputMode="decimal" required value={form.odometer_end} onChange={(e) => set("odometer_end", e.target.value)} className="input" /></Field>
+            </div>
+            <div className="miles-box">
+              <span>Miles this trip</span>
+              <strong className="tnum">{autoMiles ?? "—"}</strong>
+            </div>
+            {form.odometer_start !== "" && form.odometer_end !== "" && autoMiles === null && (
+              <p className="msg-err">Ending odometer must be greater than the start.</p>
+            )}
+            {notice && <p className="msg-ok">{notice}</p>}
+            <button disabled={saving} className="btn btn-primary btn-block">{saving ? "Saving…" : "Save trip"}</button>
+          </form>
+        </section>
 
-      <section className="bg-[var(--card)] rounded-lg border border-[var(--ink-line)] shadow-sm p-5 sm:p-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <div className="eyebrow text-[var(--cyan-deep)] mb-1">Your log</div>
-            <h2 className="text-xl text-[var(--black)]">Your trips</h2>
-            <p className="text-sm text-[var(--ink-soft)]"><span className="tnum font-semibold">{trips.length}</span> trips · <span className="tnum font-semibold">{totalMiles}</span> miles</p>
+        <section className="card">
+          <div className="eyebrow">For the PDF · optional</div>
+          <h2>Your details</h2>
+          <p className="card-sub">Printed at the top of the exported log. Leave blank if you like.</p>
+          <Field label="Name" htmlFor="pname"><input id="pname" value={profile.name} onChange={(e) => onProfile({ ...profile, name: e.target.value })} className="input" placeholder="Your name" /></Field>
+          <div className="grid-2">
+            <Field label="Case number" htmlFor="pcase"><input id="pcase" value={profile.case_id} onChange={(e) => onProfile({ ...profile, case_id: e.target.value })} className="input" placeholder="e.g. LL-2026-0412" /></Field>
+            <Field label="Email" htmlFor="pemail"><input id="pemail" type="email" value={profile.email} onChange={(e) => onProfile({ ...profile, email: e.target.value })} className="input" placeholder="you@example.com" /></Field>
           </div>
-          <div className="flex gap-2">
-            <button onClick={refresh} disabled={loading} className={ghostBtn}>Refresh</button>
-            <button onClick={exportPdf} disabled={exporting || trips.length === 0} className="rounded-md bg-[var(--peach)] text-[var(--black)] font-bold px-4 py-2 hover:bg-[var(--cyan)] disabled:opacity-60">
-              {exporting ? "Building PDF…" : "Export PDF"}
-            </button>
-          </div>
+        </section>
+      </div>
+
+      <section className="card">
+        <div className="eyebrow">Your log</div>
+        <h2>Your trips</h2>
+        <div className="stat">
+          <div><b className="tnum">{trips.length}</b><span>Trips</span></div>
+          <div><b className="tnum">{totalMiles}</b><span>Miles</span></div>
         </div>
-        {err && <p role="alert" className="mt-3 text-sm text-[var(--bad)]">{err}</p>}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+          <button onClick={exportPdf} disabled={exporting || trips.length === 0} className="btn btn-cyan btn-sm">{exporting ? "Building PDF…" : "Export PDF"}</button>
+          <button onClick={refresh} disabled={loading} className="btn btn-ghost btn-sm">Refresh</button>
+        </div>
+        {err && <p role="alert" className="msg-err">{err}</p>}
         {loading ? (
-          <p className="mt-6 text-sm text-[var(--ink-mid)]">Loading…</p>
+          <p className="hint">Loading…</p>
         ) : trips.length === 0 ? (
-          <p className="mt-6 text-sm text-[var(--ink-mid)]">No trips yet. Log your first one on the left.</p>
+          <p className="hint">No trips yet. Log your first one.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="table-wrap">
+            <table className="trips">
               <thead>
-                <tr className="text-left eyebrow text-[var(--ink-mid)] border-b-2 border-[var(--black)]">
-                  <th className="py-2 pr-3">Date</th><th className="py-2 pr-3">Time</th><th className="py-2 pr-3">Route</th><th className="py-2 pr-3">Reason</th>
-                  <th className="py-2 pr-3 text-right">Odometer</th><th className="py-2 pr-3 text-right">Miles</th><th className="py-2"></th>
-                </tr>
+                <tr><th>Date</th><th>Time</th><th>Route</th><th>Reason</th><th className="r">Odometer</th><th className="r">Miles</th><th></th></tr>
               </thead>
               <tbody>
                 {trips.map((t) => (
-                  <tr key={t.id} className="border-b border-[var(--ink-line)] align-top">
-                    <td className="py-2 pr-3 tnum whitespace-nowrap">{fmtDate(t.trip_date)}</td>
-                    <td className="py-2 pr-3 tnum whitespace-nowrap text-[var(--ink-soft)]">{fmtTime(t.time_start)}{t.time_end ? ` – ${fmtTime(t.time_end)}` : ""}</td>
-                    <td className="py-2 pr-3 min-w-[14rem]"><div>{t.location_from}</div><div className="text-[var(--ink-soft)]">→ {t.location_to}</div></td>
-                    <td className="py-2 pr-3 text-[var(--ink-soft)]">{t.reason}</td>
-                    <td className="py-2 pr-3 tnum text-right whitespace-nowrap text-[var(--ink-soft)]">{t.odometer_start} → {t.odometer_end}</td>
-                    <td className="py-2 pr-3 tnum text-right font-bold">{t.miles}</td>
-                    <td className="py-2 text-right"><button onClick={() => remove(t)} className="text-xs text-[var(--bad)] underline underline-offset-2">Delete</button></td>
+                  <tr key={t.id}>
+                    <td className="tnum" style={{ whiteSpace: "nowrap" }}>{fmtDate(t.trip_date)}</td>
+                    <td className="tnum muted" style={{ whiteSpace: "nowrap" }}>{fmtTime(t.time_start)}{t.time_end ? ` – ${fmtTime(t.time_end)}` : ""}</td>
+                    <td style={{ minWidth: "14rem" }}><div>{t.location_from}</div><div className="muted">→ {t.location_to}</div></td>
+                    <td className="muted">{t.reason}</td>
+                    <td className="r tnum muted" style={{ whiteSpace: "nowrap" }}>{t.odometer_start} → {t.odometer_end}</td>
+                    <td className="r tnum" style={{ fontWeight: 700 }}>{t.miles}</td>
+                    <td className="r"><button onClick={() => remove(t)} className="del">Delete</button></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-        <p className="mt-6 text-xs text-[var(--ink-mid)]">Saved in this browser only (localStorage). Clearing site data or switching devices starts a fresh log, so export the PDF regularly.</p>
+        <p className="hint" style={{ marginTop: 18 }}>Saved in this browser only. Clearing site data or switching phones starts a fresh log, so export the PDF regularly and keep it with the vehicle.</p>
       </section>
     </div>
   );

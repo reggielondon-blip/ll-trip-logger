@@ -12,7 +12,19 @@ export default function App({ Component, pageProps }: AppProps) {
     <div className={`${playfair.variable} ${outfit.variable} min-h-screen flex flex-col bg-[var(--snow)] text-[var(--ink)]`}>
       <Head>
         <title>Trip Logger | L and L Law Group</title>
-        <meta name="description" content="Occupational driver's license trip log for L and L Law Group clients." />
+        <meta name="description" content="Free occupational driver's license trip log from L and L Law Group. No account needed; saved on your device; export a PDF for the court." />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="L and L Law Group" />
+        <meta property="og:title" content="Trip Logger | L and L Law Group" />
+        <meta property="og:description" content="Every mile, on the record. Free occupational driver's license trip log with PDF export." />
+        <meta property="og:url" content="https://ll-trip-logger-local.netlify.app/" />
+        <meta property="og:image" content="https://ll-trip-logger-local.netlify.app/og.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Cartoon magenta car on a winding road with exhaust puffs, headline Trip Logger" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Trip Logger | L and L Law Group" />
+        <meta name="twitter:image" content="https://ll-trip-logger-local.netlify.app/og.png" />
         <meta name="robots" content="noindex, nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#000000" />
