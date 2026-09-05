@@ -5,6 +5,13 @@
 [build.environment]
   NODE_VERSION = "22"
 
+# Retire the netlify.app hostname: permanent redirect to the primary domain (keeps the path).
+[[redirects]]
+  from = "https://ll-trip-logger-local.netlify.app/*"
+  to = "https://triplog.landllawgroup.com/:splat"
+  status = 301
+  force = true
+
 # Static export: send unknown paths to the app shell.
 [[redirects]]
   from = "/*"
