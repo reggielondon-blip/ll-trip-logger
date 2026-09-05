@@ -263,3 +263,7 @@ body.mnav-open .hdr-wrap { display: none; }
 .reviewer { display: flex; flex-direction: column; }
 .reviewer a { color: var(--ink-deep); text-decoration: none; }
 .reviewer span { font-size: 0.82rem; color: var(--ink-mid); }
+
+/* ---------- language switch ---------- */
+.lang-switch { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cyan-deep); text-decoration: none; border: 1.5px solid var(--cyan-deep); border-radius: 999px; padding: 6px 12px; white-space: nowrap; }
+.lang-switch:hover { background: var(--cyan-deep); color: #fff; }

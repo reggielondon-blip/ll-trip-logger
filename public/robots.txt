@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://ll-trip-logger-local.netlify.app/sitemap.xml
+Sitemap: https://triplog.landllawgroup.com/sitemap.xml
