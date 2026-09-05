@@ -16,6 +16,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="author" content="L and L Law Group, PLLC" />
         <meta name="geo.region" content="US-TX" />
         <meta name="geo.placename" content="Frisco" />
+        <meta name="google-site-verification" content="_KYAGNDDV6PxWIJ-C7k6ciMFLY-Bl_HI9ZK8P43-VGk" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <style jsx global>{`
