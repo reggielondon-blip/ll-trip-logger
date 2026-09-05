@@ -109,7 +109,8 @@ export default function TripLoggerPage({ lang }: { lang: Lang }) {
           </h1>
           <p id="lede">{t.lede}</p>
         </section>
-        {ready ? <Logger lang={lang} profile={profile} onProfile={saveProfile} /> : <section className="card" id="log-trip"><p className="hint">{t.loadingLog}</p></section>}
+        <DataWarning lang={lang} />
+        <Logger lang={lang} profile={profile} onProfile={saveProfile} ready={ready} />
         <SeoContent lang={lang} />
       </main>
       <SiteFooter lang={lang} />
@@ -272,6 +273,22 @@ function MailIcon() {
 
 /* ---------------- app ---------------- */
 
+function DataWarning({ lang }: { lang: Lang }) {
+  const t = UI[lang];
+  return (
+    <aside className="warn" role="note" aria-labelledby="warn-h">
+      <div className="warn-icon" aria-hidden="true">!</div>
+      <div>
+        <h2 id="warn-h">{t.warnTitle}</h2>
+        <p>{t.warnBody}</p>
+        <ul>
+          {t.warnDo.map((d) => <li key={d}>{d}</li>)}
+        </ul>
+      </div>
+    </aside>
+  );
+}
+
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
   return (
     <label htmlFor={htmlFor} className="field">
@@ -281,9 +298,10 @@ function Field({ label, htmlFor, children }: { label: string; htmlFor: string; c
   );
 }
 
-function Logger({ lang, profile, onProfile }: { lang: Lang; profile: Profile; onProfile: (p: Profile) => void }) {
+function Logger({ lang, profile, onProfile, ready }: { lang: Lang; profile: Profile; onProfile: (p: Profile) => void; ready: boolean }) {
   const t = UI[lang];
-  const emptyTrip = useCallback((): TripFormData => ({ trip_date: today(), time_start: "", time_end: "", location_from: "", location_to: "", reason: t.reasons[0], odometer_start: "", odometer_end: "" }), [t.reasons]);
+  // trip_date starts empty so the server-rendered form matches the client (today() differs per timezone); filled in on mount.
+  const emptyTrip = useCallback((): TripFormData => ({ trip_date: "", time_start: "", time_end: "", location_from: "", location_to: "", reason: t.reasons[0], odometer_start: "", odometer_end: "" }), [t.reasons]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -308,8 +326,10 @@ function Logger({ lang, profile, onProfile }: { lang: Lang; profile: Profile; on
   }, []);
 
   useEffect(() => {
+    if (!ready) return;
+    setForm((f) => (f.trip_date ? f : { ...f, trip_date: today() }));
     refresh();
-  }, [refresh]);
+  }, [refresh, ready]);
 
   const autoMiles = useMemo(() => {
     if (form.odometer_start === "" || form.odometer_end === "") return null;
@@ -328,7 +348,7 @@ function Logger({ lang, profile, onProfile }: { lang: Lang; profile: Profile; on
     try {
       await api.createTrip(form, CREDS);
       await refresh();
-      setForm((f) => ({ ...emptyTrip(), trip_date: f.trip_date, odometer_start: f.odometer_end, reason: f.reason }));
+      setForm((f) => ({ ...emptyTrip(), trip_date: f.trip_date || today(), odometer_start: f.odometer_end, reason: f.reason }));
       setNotice(t.saved);
     } catch (ex) {
       fail(ex);
@@ -373,7 +393,7 @@ function Logger({ lang, profile, onProfile }: { lang: Lang; profile: Profile; on
           <p className="card-sub">{t.milesAuto}</p>
           <form onSubmit={save}>
             <Field label={t.date} htmlFor="date">
-              <input id="date" type="date" required value={form.trip_date} max={today()} onChange={(e) => set("trip_date", e.target.value)} className="input" />
+              <input id="date" type="date" required value={form.trip_date} max={ready ? today() : undefined} onChange={(e) => set("trip_date", e.target.value)} className="input" />
             </Field>
             <div className="grid-2">
               <Field label={t.leftAt} htmlFor="ts"><input id="ts" type="time" value={form.time_start} onChange={(e) => set("time_start", e.target.value)} className="input" /></Field>
